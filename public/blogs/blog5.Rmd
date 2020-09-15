@@ -1,0 +1,377 @@
+---
+title: "Efficient Frontier"
+date: '2017-10-31T22:42:51-05:00'
+description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna
+  sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa
+  sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem
+  consequat tincidunt. Vivamus et sagittis tempus.
+draft: no
+image: pic07.jpg
+keywords: ''
+slug: blog5
+categories:
+- ''
+- ''
+---
+
+
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+
+```{r load-libraries, warning=FALSE, message=FALSE, echo=FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(fivethirtyeight)
+library(here)
+library(skimr)
+library(janitor)
+library(vroom)
+library(tidyquant)
+library(kableExtra)
+
+options(scipen=200)
+```
+
+
+# Data Cleansing and Descriptive Statistics
+
+As we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!
+But in order to download the financial data, we first have to consider the mapping of company names to stock symbols. 
+
+
+```{r load_nyse_data, message=FALSE, warning=FALSE}
+nyse <- read_csv(here::here("data_efficient_frontier","nyse.csv"))
+```
+
+
+Now that we have this data, let's have a quick look at the number of companies per sector.
+
+
+```{r companies_per_sector}
+
+companies_by_sector <- nyse %>%
+  group_by(sector) %>%
+  count() %>% # count the number of companies by sector
+  arrange(desc(n))
+
+companies_by_sector %>% 
+  rename(`number of companies` = n) %>% # rename for better reading
+  kbl() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) # have a nice HTML table
+
+
+ggplot(companies_by_sector, aes(x = n, y = reorder(sector, n)))+
+  geom_col() + 
+  labs(title = "Number of NYSE companies per sector",
+       x = "number of companies",
+       y = "sector")
+
+```
+
+Next, let's choose some stocks and their ticker symbols and download some data. Note that `SPY` is the SP500 ETF (Exchange Traded Fund).
+
+
+```{r get_price_data, message=FALSE, warning=FALSE, cache=TRUE}
+
+myStocks <- c("AXP","BLK","KO","FDX","MCD","ORCL","SPY" ) %>%
+  tq_get(get  = "stock.prices",
+         from = "2011-01-01",
+         to   = "2020-08-31") %>%
+  group_by(symbol) 
+
+glimpse(myStocks) # examine the structure of the resulting data frame
+
+```
+
+Financial performance analysis depends on returns. Hence, we first want to calculate daily and monthly returns (given the adjusted closing prices). 
+
+
+```{r calculate_returns, message=FALSE, warning=FALSE, cache=TRUE}
+#calculate daily returns
+myStocks_returns_daily <- myStocks %>%
+  tq_transmute(select     = adjusted, 
+               mutate_fun = periodReturn, 
+               period     = "daily", 
+               type       = "log",
+               col_rename = "daily_returns",
+               cols = c(nested.col))  
+
+#calculate monthly  returns
+myStocks_returns_monthly <- myStocks %>%
+  tq_transmute(select     = adjusted, 
+               mutate_fun = periodReturn, 
+               period     = "monthly", 
+               type       = "arithmetic",
+               col_rename = "monthly_returns",
+               cols = c(nested.col)) 
+
+#calculate yearly returns
+myStocks_returns_annual <- myStocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select     = adjusted, 
+               mutate_fun = periodReturn, 
+               period     = "yearly", 
+               type       = "arithmetic",
+               col_rename = "yearly_returns",
+               cols = c(nested.col))
+```
+
+
+To get a feeling for the numbers, let's summarise monthly returns for each of the stocks and the `SPY` ETF:
+
+```{r summarise_monthly_returns}
+
+myStocks_returns_monthly_summary <- myStocks_returns_monthly %>% 
+  group_by(symbol) %>% 
+  summarise(min = min(monthly_returns), 
+            median = median(monthly_returns), 
+            max = max(monthly_returns), 
+            mean = mean(monthly_returns), 
+            sd = sd(monthly_returns)) # calculate summary statistics for monthly returns by stock
+
+myStocks_returns_monthly_summary %>% 
+  kbl() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) # have a nice HTML table
+
+```
+
+# Visualizing Data
+
+
+To get an even better feeling, let's also visualise the distribution of monthly returns for each of the stocks:
+
+```{r density_monthly_returns}
+
+myStocks_returns_monthly %>% 
+  filter(symbol != "SPY") %>% # only display density of the stocks (not the ETF)
+  ggplot(aes(x = monthly_returns, fill = symbol)) + # add some color (fill) just for fun
+  geom_density() + 
+  facet_wrap(~symbol) + # create a density plot for each stock
+  labs(title = "Distribution of monthly returns per stock", 
+       x = "monthly returns") +
+  theme(legend.position = "none") # show no legend
+
+```
+We can see that deviation from 0.0 is strongest for Blackrock (BLK). Hence, the stock is highly volatile and thus the riskiest.
+Opposed to this, the stock of Coca Cola (KO) is quite steady, with only small changes in monthly return. Hence, this stock
+is the least risky.
+
+However, it is not only about risk, but also about returns. Hence, let's plot the risk/return profiles of our stocks!
+
+```{r risk_return_plot}
+
+myStocks_returns_monthly_summary %>% 
+  filter(symbol != "SPY") %>% # only display the stocks (not the ETF)
+  ggplot(aes(x=sd, y = mean, label = symbol)) +
+  geom_point(aes(colour = symbol), size = 4) + # make points a little bigger
+  geom_smooth(method = lm, se = FALSE, group = 0) + # add a risk-return line
+  ggrepel::geom_text_repel(aes(colour = symbol)) + # add the stock names as labels to the points
+  labs(title = 'Risk/Return profile of stocks', 
+       x = 'Risk (stdev of monthly returns)', 
+       y ="Average monthly return") +
+  theme_bw() + # use a nice theme
+  scale_x_continuous(labels = scales::percent) + # display x values as percentages
+  scale_y_continuous(labels = scales::percent) + # display y values as percentages
+  theme(legend.position = "none") # show no legend
+
+```
+
+As a thumb of rule, taking a higher risk is rewarded with a higher average monthly return. 
+We can see that even though FedEx (FDX) has the highest risk, it does not have the highest average monthly return.
+Furthermore, Blackrock (BLK) has the highest average monthly return, with only a little more risk than American Express (AXP) and Oracle (ORCL).
+Regarding our goal of making money with stocks, we would thus choose a combination of Blackrock and the lower risk McDonald's (MCD), as they are above our risk-return line.
+
+
+# Efficient Frontier - Portfolio Optimization 
+
+One thing that many people don't know about financial risk with stocks is that combining two or more stocks together doesn't just mean that we take the average of the risks of each stock to come up with the overall risk. No, actually it depends **A LOT** on how the two are correlated. If they move up or down together when the market changes, this is a bad sign. The less they are correlated, the more diverse of a risk portfolio you can build out of the stocks.  
+*What do I mean by that?* the amazing result is that you can come up with a portfolio that has lower risk than any of the stocks it is made from *individually*. The possible combinations of the stocks is called the **Effective Frontier**.  
+
+## Two Asset Frontier
+
+Let's have a look at the effective frontier of first two of the stocks, I will be choosing BlackRock and Oracle. 
+```{r, two asset effective frontier}
+#pivot the dataframe so we can actually calculate covariances between the data
+myStocks_returns_monthly_wider <- myStocks_returns_monthly %>% 
+  pivot_wider(names_from = symbol, values_from=monthly_returns)
+
+#if we ever want to exchange monthly data with annual data
+#myStocks_returns_annual_wider <- myStocks_returns_annual %>% 
+#  pivot_wider(names_from = symbol, values_from=yearly_returns)
+
+
+#get Data for BlackRock and Oracle
+df_BLK_ORCL <- myStocks_returns_monthly_wider %>% 
+  select(date,BLK,ORCL) %>%  #select only the variables we need
+  summarise(mean_BLK = mean(BLK), # calculate the means
+            mean_ORCL= mean(ORCL),# calculate the means
+            sd_BLK = sd(BLK), # calculate the standard deviation
+            sd_ORCL = sd(ORCL), # calculate the standard deviation
+            cov_BLK_ORCL = cov(ORCL,BLK)) # get the covariance between the stocks
+
+
+#get the expected returns for both as a variable
+exp_ret_BLK <- df_BLK_ORCL$mean_BLK
+exp_ret_ORCL <- df_BLK_ORCL$mean_ORCL
+
+#get the risk i.e. the standard deviation as a risk measure
+risk_BLK <- df_BLK_ORCL$sd_BLK
+risk_ORCL <- df_BLK_ORCL$sd_ORCL
+
+#calculate the covariance between the two
+cov_BLK_ORCL <- df_BLK_ORCL$cov_BLK_ORCL
+
+#simulate the different weights you put into BLK
+BLK_weights <- seq(from = 0, to = 1, length.out = 1000)
+
+#create a data table for the weights 
+effective_frontier_two_asset <- data.frame(w_BLK = BLK_weights,
+w_ORCL = 1 - BLK_weights)
+
+#use the formula:
+#return_portfolio= weight_x*return_x + weight_y*return_y 
+#for the returns
+
+#and use the formula:
+#std_portfolio = sqrt(sd_x^2*weight_x^2+sd_y^2*weight_y^2+ 2*weight_x*weight_y*cov_xy)
+#for the risk of the 1000 portfolio scenarios
+
+effective_frontier_two_asset <-effective_frontier_two_asset %>% 
+  mutate(exp_ret_portfolio = w_BLK * exp_ret_BLK + w_ORCL * exp_ret_ORCL,
+         sd_portfolio = sqrt(w_BLK^2 * risk_BLK^2 + w_ORCL^2 * 
+                               risk_ORCL^2 + 2 * w_BLK * w_ORCL * cov_BLK_ORCL))
+
+# #let's have a look at the data (in a nice html table format)
+# effective_frontier_two_asset %>% 
+#   kbl() %>%
+#   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) # have a nice HTML table
+
+#finally, let's plot the effective frontier!
+effective_frontier_two_asset %>% 
+ggplot()+
+  geom_point(aes(x=sd_portfolio,y=exp_ret_portfolio,color=w_BLK))+ #plots all the combinations of BLK and ORCL
+  labs(title = "Two assets combined can have a \nlower risk profile than each indvidually",
+       subtitle = "Effective Frontier between BlackRock and Oracle",
+       x = "Risk",
+       y = "Expected Returns") +
+  scale_x_continuous(labels = scales::percent)+ #add the percentage labels to the x-axis
+  scale_y_continuous(labels = scales::percent)+  #add the percentage labels to the y-axis
+  theme_bw()+
+  NULL
+
+```
+
+
+Remarkable! Apparently, two stocks combined in a mixed weight portfolio can have a lower risk profile than either of the two individually! This reflects the fact that corellation between the two has an effect on the overall performance-risk trade-off. This seems to be a strong argument in favor of diversification.  
+
+## Multi Asset Frontier
+
+
+Now let's look not only at BlackRock and Oracle, but at a third Stock (FEDEX)!
+
+
+```{r, Multi-Asset Effective Frontier}
+
+#get Data for BlackRock and Oracle
+df_BLK_ORCL_FDX <- myStocks_returns_monthly_wider %>% 
+  select(date,BLK,ORCL,FDX) %>% #select the three stocks and the date
+  summarise(mean_BLK = mean(BLK), #calculating mean of BLK
+            mean_ORCL= mean(ORCL),#calculating mean of ORCL
+            mean_FDX = mean(FDX),#calculating mean of FDX
+            sd_BLK = sd(BLK),#calculating standard deviation of BLK
+            sd_ORCL = sd(ORCL), #calculating standard deviation of ORCL
+            sd_FDX = sd(FDX),#calculating standard deviation of FDX
+            cov_BLK_ORCL = cov(ORCL,BLK), #covariance between ORCL and BLK
+            cov_BLK_FDX = cov(BLK,FDX),#covariance between BLK and FDX
+            cov_ORCL_FDX = cov(ORCL,FDX)) #covariance between ORCL and FDX
+            
+
+
+#get the expected returns for both as a variable
+exp_ret_BLK <- df_BLK_ORCL_FDX$mean_BLK
+exp_ret_ORCL <- df_BLK_ORCL_FDX$mean_ORCL
+exp_ret_FDX <- df_BLK_ORCL_FDX$mean_FDX
+
+#get the risk i.e. the standard deviation as a risk measure
+risk_BLK <- df_BLK_ORCL_FDX$sd_BLK
+risk_ORCL <- df_BLK_ORCL_FDX$sd_ORCL
+risk_FDX <- df_BLK_ORCL_FDX$sd_FDX
+
+#calculate the covariance between the two
+cov_BLK_ORCL <- df_BLK_ORCL_FDX$cov_BLK_ORCL
+cov_BLK_FDX <- df_BLK_ORCL_FDX$cov_BLK_FDX
+cov_ORCL_FDX <- df_BLK_ORCL_FDX$cov_ORCL_FDX
+
+#simulate the different weights you put into BLK
+BLK_weights <- seq(from = 0, to = 1, length.out = 1000)
+#BLK_weights
+
+#create a data table for the weights 
+#for every weight of BLK, we create 1000 combinations for the weight of ORCL
+effective_frontier_three_asset <- data.frame(w_BLK = rep(BLK_weights,each=length(BLK_weights)),
+w_ORCL = rep(BLK_weights,length(BLK_weights)))
+
+effective_frontier_three_asset<- effective_frontier_three_asset %>% 
+  mutate(w_FDX = 1-w_BLK-w_ORCL) #the weight for FDX is than 1 minus the other two
+
+#let's have a look to see if we did it right
+#effective_frontier_three_asset
+
+
+#calculate the risk and return for every portfolio
+effective_frontier_three_asset <-effective_frontier_three_asset %>% 
+  mutate(exp_ret_portfolio = w_BLK * exp_ret_BLK + w_ORCL * exp_ret_ORCL+ w_FDX*exp_ret_FDX,
+         sd_portfolio = sqrt(w_BLK^2 * risk_BLK^2 + w_ORCL^2 * risk_ORCL^2 + w_FDX^2*risk_FDX^2 +2 * w_BLK * w_ORCL * cov_BLK_ORCL+ 2 * w_BLK * w_FDX * cov_BLK_FDX+ 2 * w_ORCL * w_FDX * cov_ORCL_FDX))
+
+#we have to constraint the choices to positive values (since we assume that short selling is fobidden/not possible)
+
+effective_frontier_three_asset<- effective_frontier_three_asset %>% 
+  filter(w_BLK >=0&w_ORCL>=0&w_FDX>=0)
+
+#let's have a look at the data
+#effective_frontier_three_asset 
+
+
+#finally, let's plot the effective frontier!
+effective_frontier_three_asset %>% 
+ggplot()+
+  geom_point(aes(x=sd_portfolio,y=exp_ret_portfolio,color = w_BLK-w_FDX))+
+  labs(title = "Three assets combined create a 3D Region of possible portfolios",
+       subtitle = "Effective Frontier between BlackRock,Oracle and Fedex",
+       x = "Risk",
+       y = "Expected Returns") +
+  scale_x_continuous(labels = scales::percent)+ #put x-axis label in percentage
+  scale_y_continuous(labels = scales::percent)+ #put y-axis label in percentage
+  theme_bw()+
+  scale_color_gradientn(colors = c("blue", "#800080", "red"), #change the color code
+  name = expression(omega[BLK] - omega[FDX]), labels = scales::percent)+ #give the legend nicer labels
+  NULL
+
+
+```
+
+
+# Analysis and Conclusion 
+
+we see that our frontier has now become a region! This is due to the fact that 3 stocks create a 3-dimensional space for portfolio combinations.  
+The Color code tells us basically that the red corner is where we invest everything in BLK, the blue one is everything in Fedex and the lila corner is everything in ORCL. 
+While all points are theoretically possible, only the points on the border line of the region makes sense!  
+*Why?* because the points inside the region are always worse than the points on the border!
+
+

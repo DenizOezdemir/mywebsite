@@ -21,12 +21,13 @@
     </item>
     
     <item>
-      <title>TEST1</title>
+      <title>Efficient Frontier</title>
       <link>/blogs/blog5/</link>
       <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
       
       <guid>/blogs/blog5/</guid>
-      <description></description>
+      <description>Data Cleansing and Descriptive StatisticsAs we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!But in order to download the financial data, we first have to consider the mapping of company names to stock symbols.
+nyse &amp;lt;- read_csv(here::here(&amp;quot;data_efficient_frontier&amp;quot;,&amp;quot;nyse.csv&amp;quot;))Now that we have this data, let’s have a quick look at the number of companies per sector.</description>
     </item>
     
     <item>
