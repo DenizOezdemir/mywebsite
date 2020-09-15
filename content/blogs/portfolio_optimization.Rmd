@@ -1,17 +1,11 @@
 ---
-title: "Efficient Frontier - Portfolio Optimization"
-author: "Deniz Oezdemir"
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    theme: flatly
-    highlight: zenburn
-    number_sections: yes
-    toc: yes
-    toc_float: yes
-    code_folding: show
-
+date: "2020-09-15"
+description: How to construct the best combination of a given set of stocks
+draft: false
+image: pic01.jpg
+keywords: ""
 slug: portfolio_optimization
+title: Efficient Frontier - Portfolio Optimization
 ---
 
 
