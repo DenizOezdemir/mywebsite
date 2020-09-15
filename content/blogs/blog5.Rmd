@@ -1,11 +1,14 @@
 ---
-date: "2020-09-15"
-description: How to construct the best combination of a given set of stocks
+categories:
+- ""
+- ""
+date: "2017-10-31T21:28:43-05:00"
+description: ""
 draft: false
-image: pic01.jpg
+image: pic10.jpg
 keywords: ""
-slug: portfolio_optimization
-title: Efficient Frontier - Portfolio Optimization
+slug: blog5
+title: Ipsum
 ---
 
 
