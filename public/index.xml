@@ -26,8 +26,18 @@
       <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
       
       <guid>/blogs/blog5/</guid>
-      <description>Data Cleansing and Descriptive StatisticsAs we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!But in order to download the financial data, we first have to consider the mapping of company names to stock symbols.
+      <description>As we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!
+Data Cleansing and Descriptive StatisticsBut in order to download the financial data, we first have to consider the mapping of company names to stock symbols.
 nyse &amp;lt;- read_csv(here::here(&amp;quot;data_efficient_frontier&amp;quot;,&amp;quot;nyse.csv&amp;quot;))Now that we have this data, let’s have a quick look at the number of companies per sector.</description>
+    </item>
+    
+    <item>
+      <title>Efficient Frontier</title>
+      <link>/blogs/blog6/</link>
+      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
+      
+      <guid>/blogs/blog6/</guid>
+      <description>IntroductionIt is often said that Warren Buffet counts among the top investors of all time. This is mainly due to his quite specific investment approach called “value investing”, where he doesn’t just follow the latest trends on the market which, as we all know, can be quite volatile from time to time. No, he rather focuses on the valuation he would give a company, looks at their stock prices, and sees if he can pick a bargain.</description>
     </item>
     
     <item>

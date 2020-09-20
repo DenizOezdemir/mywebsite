@@ -1,0 +1,286 @@
+---
+title: "Efficient Frontier"
+date: '2017-10-31T22:42:51-05:00'
+description: Tracking Berkshire Hathaway's performance against the S&P 500.
+draft: no
+image: pic11.jpg
+keywords: ''
+slug: blog6
+categories:
+- ''
+- ''
+---
+
+
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+
+```{r load-libraries, warning=FALSE, message=FALSE, echo=FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(fivethirtyeight)
+library(here)
+library(skimr)
+library(janitor)
+library(vroom)
+library(tidyquant)
+library(kableExtra)
+library(gsubfn)
+library(infer)
+
+options(scipen=200)
+```
+
+
+# Introduction
+
+It is often said that Warren Buffet counts among the top investors of all time. This is mainly due to his quite specific investment approach called "value investing", where he doesn't just follow the latest trends on the market which, as we all know, can be quite volatile from time to time. No, he rather focuses on the valuation he would give a company, looks at their stock prices, and sees if he can pick a bargain. The idea is to hold the company up until the moment where it reaches it true valuation and than sell it, gaining a premium to the intial buy price. 
+While his immensive wealth is indisputable, many people doubt whether or not his investment strategy is just strongly exxagerated. 
+This lead me to actually check what the data has to say: who performed better, Mr. Buffet or Mr. Market, and is this outperformance statistically significant? For that we have a sample of years of performance of Mr. Buffet vs. Mr. Market  
+
+# Data Cleansing and Descriptive Statistics 
+
+Let us first load the dataset, which is a sample of years from 1975 to 2005:
+
+```{r load_nyse_data, message=FALSE, warning=FALSE}
+performance_data <- read_delim(here::here("data_warren_buffet","Berkshire_Hathaway_vs_S&P500_V0.csv"),
+                               delim=";")
+```
+
+
+Now that we have this data, let's have a quick look at them
+
+
+```{r companies_per_sector}
+glimpse(performance_data) # shows the first few values of each column
+
+```
+
+Our dataset cointains the percentage returns Berkshire Hathaway had both in book value as well as market value, whereas we see the percentage changes for the S&P including dividends. 
+We immediately see a few things: 
+while our dataset has no missing values (which is amazing), there are a few problems with the format:
+the yearly percentage changes as well as the cummulative percentage changes are all strings/characters rather than numbers. We will have some problems converting the strings to numbers since the decimal point here is actually a comma rather than a point, which gives R a headache. 
+
+So there is some cleaning up to do!
+
+
+```{r, cleaning up dataset, message=FALSE, warning=FALSE, cache=TRUE}
+
+performance_clean<- performance_data %>% 
+   # we want to have lower case names without whitespaces (makes our lives less annoying)
+  clean_names() %>% 
+  #what we basically do is that we first strip off the last character of each cell, which in our case always is a percentage scale. Afterwards we go on and replace all occurances of "," with a dot, so that we can then transalte the string into a number!
+  #last but not least, we divide by 100 in order to account for the fact that we no longer have percentages, but numbers 
+  mutate(berkshire_book_value_pct_change=
+           as.numeric(gsub(pattern=",",replacement=".",
+                           gsub('.{0,1}$', '', berkshire_book_value_pct_change)))/100,
+         berkshire_book_value_cumulative_return=
+           as.numeric(gsub(pattern=",",replacement=".",
+                           gsub('.{0,1}$', '', berkshire_book_value_cumulative_return)))/100,
+         berkshire_market_value_pct_change=
+           as.numeric(gsub(pattern=",",replacement=".",
+                           gsub('.{0,1}$', '', berkshire_market_value_pct_change)))/100,
+         berkshire_market_value_cumulative_return=
+           as.numeric(gsub(pattern=",",replacement=".",
+                           gsub('.{0,1}$', '', berkshire_market_value_cumulative_return)))/100,
+         s_p_500_incl_dividends_pct_change=
+           as.numeric(gsub(pattern=",",replacement=".",
+                           gsub('.{0,1}$', '', s_p_500_incl_dividends_pct_change)))/100,
+         s_p_500_incl_dividends_cumulative_return=
+           as.numeric(gsub(pattern=",",replacement=".",
+                           gsub('.{0,1}$', '', s_p_500_incl_dividends_cumulative_return)))/100
+           )
+
+#Let's have another glimpse at the data
+glimpse(performance_clean)
+
+```
+
+Mission accomplished! Finally we see the returns as numbers. Let's have a closer look at their distribution: 
+
+# Visualizing Data
+
+```{r, plotting data, message=FALSE, warning=FALSE, cache=TRUE}
+#First we have to transform the data from wide format into long, so that we can easily plot it! 
+performance_clean_longer <- performance_clean %>%
+  pivot_longer(names_to = "cases", 
+               values_to="returns",
+               cols=2:7) # this is just a transformation so that we can easily plot 
+
+#Now let's actually have some fun plotting!
+performance_clean_longer %>% 
+  #we will filter out cummulative returns since those would mess up the scale, 
+  # and we want to look at yearly changes anyway
+  filter(cases!= "berkshire_market_value_cumulative_return",
+         cases!="berkshire_book_value_cumulative_return",
+         cases!= "s_p_500_incl_dividends_cumulative_return") %>%  
+  ggplot(aes(x=returns,y=cases))+
+  geom_boxplot()+
+  theme_bw()+
+  labs(title = "Can you see a difference between Mr. Market \nand Mr. Buffet?",
+       subtitle = "Boxplot of Berkshire Hathaway Book and \nMarket Performance against S&P 500",
+       x = "Returns",
+       y = "") +
+  scale_x_continuous(labels = scales::percent)+
+  NULL
+```
+
+Nice! So we see that Berkshires market value was and is quite volatile over the years,
+wherease the book value of Berkshire shows a narrower picture.
+
+But are there actually any signifcitant differences between the performance of the market and the performance of Berkshire Hathaway, on average? That is what we want to find out.
+
+# Confidence Intervals
+
+First we will try to see if the 95% confidence intervals, which basically means that if the same underlying population is sampled on numerous occasions, the resulting intervals would bracket the true population parameter (in our case the mean of the returns for Buffet and the Market) in approximately 95 % of the cases.
+
+```{r, Confidence Intervals}
+#Let's see the confidence intervals of Berkshires Market Value and of the S&P 500
+formula_CI_market_performance <- performance_clean_longer %>% 
+  # group data by returns and filter for Berkshire Market Performance against S&P 500
+  group_by(cases) %>% 
+  filter(cases %in% c("berkshire_market_value_pct_change", "s_p_500_incl_dividends_pct_change")) %>% 
+  # calculate CIs
+  summarise(average_returns = mean(returns), # calculate average returns
+            SD_returns = sd(returns), # calculate standard deviation
+            count = n(), # get the number of observations
+            t_critical = qt(0.975, count - 1), # get t-critical value with (count-1) degrees of freedom
+            SE =  SD_returns/sqrt(count), # calculate standard error
+            margin_of_error = t_critical * SE, # calculate margin of error
+            lower_ci = average_returns - margin_of_error, # calculate lower bound of the CI
+            upper_ci = average_returns + margin_of_error) # calculate upper bound of the CI
+
+# needed for gray overlapping area
+xmin_rect = formula_CI_market_performance %>%
+  filter(cases == "berkshire_market_value_pct_change") %>%
+  select(lower_ci)
+
+# needed for gray overlapping area
+xmax_rect = formula_CI_market_performance %>%
+  filter(cases == "s_p_500_incl_dividends_pct_change") %>%
+  select(upper_ci)
+
+# plot CIs
+ggplot(formula_CI_market_performance, aes(y=reorder(cases,average_returns), 
+                              x = average_returns, group = cases)) +
+  #draw the means
+  geom_point(aes(color=cases), size = 5) +
+  #draws the CI error bars
+  geom_errorbar(aes(xmin=lower_ci, xmax=upper_ci, color=cases), width=.1, size = 2) +
+  # add the lower_ci labels
+  geom_text(aes(label = scales::percent(round(lower_ci,2)), x = lower_ci),
+            hjust = 0.3, # adjust position horizontally
+            vjust = -1, # adjust position vertically
+            size = 5) + # size of text
+  # add the upper_ci labels
+  geom_text(aes(label = scales::percent(round(upper_ci,2)), x = upper_ci), 
+            hjust = 0.3, # adjust position horizontally
+            vjust = -1, # adjust position vertically
+            size = 5) + # size of text
+  # add the average labels
+  geom_text(aes(label = scales::percent(round(average_returns,2)), x = average_returns), 
+            hjust = 0.4, # adjust position horizontally
+            vjust = -0.8, # adjust position vertically
+            size = 7) + # size of text
+  # add gray overlap area
+  geom_rect(aes(xmin = xmin_rect$lower_ci, xmax = xmax_rect$upper_ci, ymin = -Inf, ymax = Inf), alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(title = "Do Mr. Buffet and Mr. Market have \nthe same mean annual returns?",
+       subtitle = "95% confidence intervals overlap",
+       y = "",
+       x = "Mean Annual Returns")+
+  scale_x_continuous(labels = scales::percent)
+
+```
+
+This is indeed interesting. While we see that the mean of Berkshire's market return lies at 33 percentage annually, it has such a high volatility that it overlaps in its extremes with the interval from the S&P 500, which has a much lower volatility. 
+Since the two intervals overlap, we will have to perform a so-called Hypothesis test to find out whether the differences of the means are indeed statistically significant. 
+
+# Hypothesis Testing
+
+In the Hypothesis test, we basically assume that the two means are the same. We look at the data we gathered, and test, under our null-hypothesis that the means are the same, how likely it would be to actually measure the means we measured in our sample. If it is highly unlikely, let's say the probability is lower than 5% that this could actually happen, we reject the assumption that they are the same. 
+
+
+Hence, let's conduct a hypothesis test. We will both use a traditional t-test and a simulation based test with the `infer` package.
+
+Our hypotheses are:
+
+H0: mu_1 = mu_2, i.e. mean returns are *not* different for the market return of Berkshire and the S&P 500  
+H1: mu_1 != mu_2, i.e. mean returns *are* different for the market return of Berkshire and the S&P 500
+
+Conducting a traditional t-test yields:
+
+
+```{r, hypothesis test }
+
+returns_test <- performance_clean_longer %>% 
+  # only take relevant information
+  filter(cases %in% c("berkshire_market_value_pct_change", "s_p_500_incl_dividends_pct_change")) %>% 
+  select(cases,returns)
+  
+t.test(returns ~ cases, data = returns_test)
+
+```
+
+As a result of the traditional test, we get a test statistic with t = 3 and a p-value of 0.014. This means that under the assumption of no difference in rating means (i.e. H0), there is only a probability of around 1.4% that we would have sampled our returns dataset or a more extreme set (with an even higher difference in return means).
+Hence, our data strongly implies that there is a difference in return means! Assuming a alpha level of 5% (t has to be >= 2), we thus reject H0.
+
+
+Let's now see a simulation based test, in which we basically sample from our data 1000 times with replacement:
+
+```{r, bootstrap simulation}
+
+# calculate actual diff in means
+obs_diff <- returns_test %>%
+  specify(returns ~ cases) %>%
+  calculate(stat = "diff in means", order = c("berkshire_market_value_pct_change", 
+                                              "s_p_500_incl_dividends_pct_change")) # order Berkshire - S&P500
+
+# simulate null distribution
+null_dist <- returns_test %>%
+  specify(returns ~ cases)  %>%
+  # set null hypothesis (no difference between the two population means)
+  hypothesize(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>% # permute for hypothesis testing
+  calculate(stat = "diff in means", order = c("berkshire_market_value_pct_change", 
+                                              "s_p_500_incl_dividends_pct_change")) # order Berkshire - S&P500
+
+# visualise p_value and null distribution
+null_dist %>% visualize() +
+  shade_p_value(obs_stat = obs_diff, direction = "two-sided") +
+  theme_bw()
+
+# print out p value
+null_dist %>%
+  get_p_value(obs_stat = obs_diff, direction = "two_sided") %>% 
+  kbl() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) # have a nice HTML table
+
+```
+
+The p-value for the simulation based test is roughly the same as the one for our traditional test. Hence, the same interpretation holds true. 
+In the visualization we clearly see how unlikely it would be to get the mean difference we got from our data under the assumption that the mean is 0. 
+
+
+# Analysis and Conclusion
+
+This means in essence (according to this sample data) that Berkshire Hathaway, and therefore Mr. Buffet, indeed outperformed the S&P 500, and therefore Mr. Market, on average, and this outperofrmance is also statistically significant as we have just proven.
+This might very well be because Mr. Buffet does not follow every trend in the market, and rather trusts his own valuations. This became extremely apparent during the dotcom bubble, where Buffet stayed away from Tech Companies even though nearly every other Big Investor or Money Manager jumped on this growth stocks. 
+While Buffet was ridiculed at first, on the long run it turned out that he indeed outperformed most of his peers in that period, after the bubble burst. 

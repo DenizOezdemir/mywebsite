@@ -1,0 +1,372 @@
+<!DOCTYPE HTML>
+<html>
+
+    <head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<meta name="description" content="23 years old, finance enthusiast and data scientist, father of a 3 old girl">
+	<meta name="author" content="Deniz Oezdemir">
+	<meta name="generator" content="Hugo 0.74.3" />
+	<title>Efficient Frontier &middot; Portfolio Website for Deniz Oezdemir</title>
+	<!-- Stylesheets -->
+	
+	<link rel="stylesheet" href="/css/main.css"/>
+	
+	
+
+	
+
+	<!-- Custom Fonts -->
+	<link href="/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+	
+	<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	
+
+	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+	<!--[if lt IE 9]>
+	<script src="js/ie/html5shiv.js"></script>
+	<script src="js/ie/html5shiv.jsrespond.min.js"></script>
+	<![endif]-->
+</head>
+
+    <body>
+
+    <!-- Wrapper -->
+        <div id="wrapper">
+
+            <!-- Header -->
+    <header id="header" class="alt">
+        <a href="/" class="logo"><strong>Deniz Oezdemir</strong> <span></span></a>
+        <nav>
+            <a href="#menu">Menu</a>
+        </nav>
+    </header>
+
+<!-- Menu -->
+    <nav id="menu">
+        <ul class="links">
+            
+                <li><a href="/">Home</a></li>
+            
+                <li><a href="/blogs">My Work</a></li>
+            
+
+        </ul>
+        <ul class="actions vertical">
+            
+            
+                <li><a href="/blogs" class="button fit">Get Started</a></li>
+            
+        </ul>
+    </nav>
+
+        <!-- Main -->
+            <div id="main" class="alt">
+
+                
+                    <section id="one">
+                        <div class="inner">
+                            <header class="major">
+                                <h1>Efficient Frontier</h1>
+                            </header>
+                            
+                                <span class="image main"><img src="/img/blogs/pic11.jpg" alt="" /></span>
+                            
+                            
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
+<script src="/rmarkdown-libs/kePrint/kePrint.js"></script>
+<link href="/rmarkdown-libs/lightable/lightable.css" rel="stylesheet" />
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>It is often said that Warren Buffet counts among the top investors of all time. This is mainly due to his quite specific investment approach called “value investing”, where he doesn’t just follow the latest trends on the market which, as we all know, can be quite volatile from time to time. No, he rather focuses on the valuation he would give a company, looks at their stock prices, and sees if he can pick a bargain. The idea is to hold the company up until the moment where it reaches it true valuation and than sell it, gaining a premium to the intial buy price.
+While his immensive wealth is indisputable, many people doubt whether or not his investment strategy is just strongly exxagerated.
+This lead me to actually check what the data has to say: who performed better, Mr. Buffet or Mr. Market, and is this outperformance statistically significant? For that we have a sample of years of performance of Mr. Buffet vs. Mr. Market</p>
+</div>
+<div id="data-cleansing-and-descriptive-statistics" class="section level1">
+<h1>Data Cleansing and Descriptive Statistics</h1>
+<p>Let us first load the dataset, which is a sample of years from 1975 to 2005:</p>
+<pre class="r"><code>performance_data &lt;- read_delim(here::here(&quot;data_warren_buffet&quot;,&quot;Berkshire_Hathaway_vs_S&amp;P500_V0.csv&quot;),
+                               delim=&quot;;&quot;)</code></pre>
+<p>Now that we have this data, let’s have a quick look at them</p>
+<pre class="r"><code>glimpse(performance_data) # shows the first few values of each column</code></pre>
+<pre><code>## Rows: 31
+## Columns: 7
+## $ Year                                           &lt;dbl&gt; 1975, 1976, 1977, 19...
+## $ `Berkshire Book Value - PCT Change`            &lt;chr&gt; &quot;21,90%&quot;, &quot;59,30%&quot;, ...
+## $ `Berkshire Market Value - PCT Change`          &lt;chr&gt; &quot;2,50%&quot;, &quot;129,30%&quot;, ...
+## $ `S&amp;P 500 (incl Dividends) - PCT Change`        &lt;chr&gt; &quot;37,20%&quot;, &quot;23,60%&quot;, ...
+## $ `Berkshire Book Value - Cumulative Return`     &lt;chr&gt; &quot;388,30%&quot;, &quot;677,90%&quot;...
+## $ `Berkshire Market Value - Cumulative Return`   &lt;chr&gt; &quot;231,50%&quot;, &quot;660,10%&quot;...
+## $ `S&amp;P 500 (incl Dividends) - Cumulative Return` &lt;chr&gt; &quot;57,50%&quot;, &quot;94,60%&quot;, ...</code></pre>
+<p>Our dataset cointains the percentage returns Berkshire Hathaway had both in book value as well as market value, whereas we see the percentage changes for the S&amp;P including dividends.
+We immediately see a few things:
+while our dataset has no missing values (which is amazing), there are a few problems with the format:
+the yearly percentage changes as well as the cummulative percentage changes are all strings/characters rather than numbers. We will have some problems converting the strings to numbers since the decimal point here is actually a comma rather than a point, which gives R a headache.</p>
+<p>So there is some cleaning up to do!</p>
+<pre class="r"><code>performance_clean&lt;- performance_data %&gt;% 
+   # we want to have lower case names without whitespaces (makes our lives less annoying)
+  clean_names() %&gt;% 
+  #what we basically do is that we first strip off the last character of each cell, which in our case always is a percentage scale. Afterwards we go on and replace all occurances of &quot;,&quot; with a dot, so that we can then transalte the string into a number!
+  #last but not least, we divide by 100 in order to account for the fact that we no longer have percentages, but numbers 
+  mutate(berkshire_book_value_pct_change=
+           as.numeric(gsub(pattern=&quot;,&quot;,replacement=&quot;.&quot;,
+                           gsub(&#39;.{0,1}$&#39;, &#39;&#39;, berkshire_book_value_pct_change)))/100,
+         berkshire_book_value_cumulative_return=
+           as.numeric(gsub(pattern=&quot;,&quot;,replacement=&quot;.&quot;,
+                           gsub(&#39;.{0,1}$&#39;, &#39;&#39;, berkshire_book_value_cumulative_return)))/100,
+         berkshire_market_value_pct_change=
+           as.numeric(gsub(pattern=&quot;,&quot;,replacement=&quot;.&quot;,
+                           gsub(&#39;.{0,1}$&#39;, &#39;&#39;, berkshire_market_value_pct_change)))/100,
+         berkshire_market_value_cumulative_return=
+           as.numeric(gsub(pattern=&quot;,&quot;,replacement=&quot;.&quot;,
+                           gsub(&#39;.{0,1}$&#39;, &#39;&#39;, berkshire_market_value_cumulative_return)))/100,
+         s_p_500_incl_dividends_pct_change=
+           as.numeric(gsub(pattern=&quot;,&quot;,replacement=&quot;.&quot;,
+                           gsub(&#39;.{0,1}$&#39;, &#39;&#39;, s_p_500_incl_dividends_pct_change)))/100,
+         s_p_500_incl_dividends_cumulative_return=
+           as.numeric(gsub(pattern=&quot;,&quot;,replacement=&quot;.&quot;,
+                           gsub(&#39;.{0,1}$&#39;, &#39;&#39;, s_p_500_incl_dividends_cumulative_return)))/100
+           )
+
+#Let&#39;s have another glimpse at the data
+glimpse(performance_clean)</code></pre>
+<pre><code>## Rows: 31
+## Columns: 7
+## $ year                                     &lt;dbl&gt; 1975, 1976, 1977, 1978, 19...
+## $ berkshire_book_value_pct_change          &lt;dbl&gt; 0.219, 0.593, 0.319, 0.240...
+## $ berkshire_market_value_pct_change        &lt;dbl&gt; 0.025, 1.293, 0.468, 0.145...
+## $ s_p_500_incl_dividends_pct_change        &lt;dbl&gt; 0.372, 0.236, -0.074, 0.06...
+## $ berkshire_book_value_cumulative_return   &lt;dbl&gt; 3.88, 6.78, 9.26, 11.72, 1...
+## $ berkshire_market_value_cumulative_return &lt;dbl&gt; 2.31, 6.60, 10.16, 11.78, ...
+## $ s_p_500_incl_dividends_cumulative_return &lt;dbl&gt; 0.575, 0.946, 0.802, 0.918...</code></pre>
+<p>Mission accomplished! Finally we see the returns as numbers. Let’s have a closer look at their distribution:</p>
+</div>
+<div id="visualizing-data" class="section level1">
+<h1>Visualizing Data</h1>
+<pre class="r"><code>#First we have to transform the data from wide format into long, so that we can easily plot it! 
+performance_clean_longer &lt;- performance_clean %&gt;%
+  pivot_longer(names_to = &quot;cases&quot;, 
+               values_to=&quot;returns&quot;,
+               cols=2:7) # this is just a transformation so that we can easily plot 
+
+#Now let&#39;s actually have some fun plotting!
+performance_clean_longer %&gt;% 
+  #we will filter out cummulative returns since those would mess up the scale, 
+  # and we want to look at yearly changes anyway
+  filter(cases!= &quot;berkshire_market_value_cumulative_return&quot;,
+         cases!=&quot;berkshire_book_value_cumulative_return&quot;,
+         cases!= &quot;s_p_500_incl_dividends_cumulative_return&quot;) %&gt;%  
+  ggplot(aes(x=returns,y=cases))+
+  geom_boxplot()+
+  theme_bw()+
+  labs(title = &quot;Can you see a difference between Mr. Market \nand Mr. Buffet?&quot;,
+       subtitle = &quot;Boxplot of Berkshire Hathaway Book and \nMarket Performance against S&amp;P 500&quot;,
+       x = &quot;Returns&quot;,
+       y = &quot;&quot;) +
+  scale_x_continuous(labels = scales::percent)+
+  NULL</code></pre>
+<p><img src="/blogs/blog6_files/figure-html/plotting%20data-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p>Nice! So we see that Berkshires market value was and is quite volatile over the years,
+wherease the book value of Berkshire shows a narrower picture.</p>
+<p>But are there actually any signifcitant differences between the performance of the market and the performance of Berkshire Hathaway, on average? That is what we want to find out.</p>
+</div>
+<div id="confidence-intervals" class="section level1">
+<h1>Confidence Intervals</h1>
+<p>First we will try to see if the 95% confidence intervals, which basically means that if the same underlying population is sampled on numerous occasions, the resulting intervals would bracket the true population parameter (in our case the mean of the returns for Buffet and the Market) in approximately 95 % of the cases.</p>
+<pre class="r"><code>#Let&#39;s see the confidence intervals of Berkshires Market Value and of the S&amp;P 500
+formula_CI_market_performance &lt;- performance_clean_longer %&gt;% 
+  # group data by returns and filter for Berkshire Market Performance against S&amp;P 500
+  group_by(cases) %&gt;% 
+  filter(cases %in% c(&quot;berkshire_market_value_pct_change&quot;, &quot;s_p_500_incl_dividends_pct_change&quot;)) %&gt;% 
+  # calculate CIs
+  summarise(average_returns = mean(returns), # calculate average returns
+            SD_returns = sd(returns), # calculate standard deviation
+            count = n(), # get the number of observations
+            t_critical = qt(0.975, count - 1), # get t-critical value with (count-1) degrees of freedom
+            SE =  SD_returns/sqrt(count), # calculate standard error
+            margin_of_error = t_critical * SE, # calculate margin of error
+            lower_ci = average_returns - margin_of_error, # calculate lower bound of the CI
+            upper_ci = average_returns + margin_of_error) # calculate upper bound of the CI
+
+# needed for gray overlapping area
+xmin_rect = formula_CI_market_performance %&gt;%
+  filter(cases == &quot;berkshire_market_value_pct_change&quot;) %&gt;%
+  select(lower_ci)
+
+# needed for gray overlapping area
+xmax_rect = formula_CI_market_performance %&gt;%
+  filter(cases == &quot;s_p_500_incl_dividends_pct_change&quot;) %&gt;%
+  select(upper_ci)
+
+# plot CIs
+ggplot(formula_CI_market_performance, aes(y=reorder(cases,average_returns), 
+                              x = average_returns, group = cases)) +
+  #draw the means
+  geom_point(aes(color=cases), size = 5) +
+  #draws the CI error bars
+  geom_errorbar(aes(xmin=lower_ci, xmax=upper_ci, color=cases), width=.1, size = 2) +
+  # add the lower_ci labels
+  geom_text(aes(label = scales::percent(round(lower_ci,2)), x = lower_ci),
+            hjust = 0.3, # adjust position horizontally
+            vjust = -1, # adjust position vertically
+            size = 5) + # size of text
+  # add the upper_ci labels
+  geom_text(aes(label = scales::percent(round(upper_ci,2)), x = upper_ci), 
+            hjust = 0.3, # adjust position horizontally
+            vjust = -1, # adjust position vertically
+            size = 5) + # size of text
+  # add the average labels
+  geom_text(aes(label = scales::percent(round(average_returns,2)), x = average_returns), 
+            hjust = 0.4, # adjust position horizontally
+            vjust = -0.8, # adjust position vertically
+            size = 7) + # size of text
+  # add gray overlap area
+  geom_rect(aes(xmin = xmin_rect$lower_ci, xmax = xmax_rect$upper_ci, ymin = -Inf, ymax = Inf), alpha = 0.5) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;) +
+  labs(title = &quot;Do Mr. Buffet and Mr. Market have \nthe same mean annual returns?&quot;,
+       subtitle = &quot;95% confidence intervals overlap&quot;,
+       y = &quot;&quot;,
+       x = &quot;Mean Annual Returns&quot;)+
+  scale_x_continuous(labels = scales::percent)</code></pre>
+<p><img src="/blogs/blog6_files/figure-html/Confidence%20Intervals-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p>This is indeed interesting. While we see that the mean of Berkshire’s market return lies at 33 percentage annually, it has such a high volatility that it overlaps in its extremes with the interval from the S&amp;P 500, which has a much lower volatility.
+Since the two intervals overlap, we will have to perform a so-called Hypothesis test to find out whether the differences of the means are indeed statistically significant.</p>
+</div>
+<div id="hypothesis-testing" class="section level1">
+<h1>Hypothesis Testing</h1>
+<p>In the Hypothesis test, we basically assume that the two means are the same. We look at the data we gathered, and test, under our null-hypothesis that the means are the same, how likely it would be to actually measure the means we measured in our sample. If it is highly unlikely, let’s say the probability is lower than 5% that this could actually happen, we reject the assumption that they are the same.</p>
+<p>Hence, let’s conduct a hypothesis test. We will both use a traditional t-test and a simulation based test with the <code>infer</code> package.</p>
+<p>Our hypotheses are:</p>
+<p>H0: mu_1 = mu_2, i.e. mean returns are <em>not</em> different for the market return of Berkshire and the S&amp;P 500<br />
+H1: mu_1 != mu_2, i.e. mean returns <em>are</em> different for the market return of Berkshire and the S&amp;P 500</p>
+<p>Conducting a traditional t-test yields:</p>
+<pre class="r"><code>returns_test &lt;- performance_clean_longer %&gt;% 
+  # only take relevant information
+  filter(cases %in% c(&quot;berkshire_market_value_pct_change&quot;, &quot;s_p_500_incl_dividends_pct_change&quot;)) %&gt;% 
+  select(cases,returns)
+  
+t.test(returns ~ cases, data = returns_test)</code></pre>
+<pre><code>## 
+##  Welch Two Sample t-test
+## 
+## data:  returns by cases
+## t = 3, df = 41, p-value = 0.01
+## alternative hypothesis: true difference in means is not equal to 0
+## 95 percent confidence interval:
+##  0.0381 0.3221
+## sample estimates:
+## mean in group berkshire_market_value_pct_change 
+##                                           0.325 
+## mean in group s_p_500_incl_dividends_pct_change 
+##                                           0.145</code></pre>
+<p>As a result of the traditional test, we get a test statistic with t = 3 and a p-value of 0.014. This means that under the assumption of no difference in rating means (i.e. H0), there is only a probability of around 1.4% that we would have sampled our returns dataset or a more extreme set (with an even higher difference in return means).
+Hence, our data strongly implies that there is a difference in return means! Assuming a alpha level of 5% (t has to be &gt;= 2), we thus reject H0.</p>
+<p>Let’s now see a simulation based test, in which we basically sample from our data 1000 times with replacement:</p>
+<pre class="r"><code># calculate actual diff in means
+obs_diff &lt;- returns_test %&gt;%
+  specify(returns ~ cases) %&gt;%
+  calculate(stat = &quot;diff in means&quot;, order = c(&quot;berkshire_market_value_pct_change&quot;, 
+                                              &quot;s_p_500_incl_dividends_pct_change&quot;)) # order Berkshire - S&amp;P500
+
+# simulate null distribution
+null_dist &lt;- returns_test %&gt;%
+  specify(returns ~ cases)  %&gt;%
+  # set null hypothesis (no difference between the two population means)
+  hypothesize(null = &quot;independence&quot;) %&gt;%
+  generate(reps = 1000, type = &quot;permute&quot;) %&gt;% # permute for hypothesis testing
+  calculate(stat = &quot;diff in means&quot;, order = c(&quot;berkshire_market_value_pct_change&quot;, 
+                                              &quot;s_p_500_incl_dividends_pct_change&quot;)) # order Berkshire - S&amp;P500
+
+# visualise p_value and null distribution
+null_dist %&gt;% visualize() +
+  shade_p_value(obs_stat = obs_diff, direction = &quot;two-sided&quot;) +
+  theme_bw()</code></pre>
+<p><img src="/blogs/blog6_files/figure-html/bootstrap%20simulation-1.png" width="648" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># print out p value
+null_dist %&gt;%
+  get_p_value(obs_stat = obs_diff, direction = &quot;two_sided&quot;) %&gt;% 
+  kbl() %&gt;%
+  kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)) # have a nice HTML table</code></pre>
+<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;">
+p_value
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+0.012
+</td>
+</tr>
+</tbody>
+</table>
+<p>The p-value for the simulation based test is roughly the same as the one for our traditional test. Hence, the same interpretation holds true.
+In the visualization we clearly see how unlikely it would be to get the mean difference we got from our data under the assumption that the mean is 0.</p>
+</div>
+<div id="analysis-and-conclusion" class="section level1">
+<h1>Analysis and Conclusion</h1>
+<p>This means in essence (according to this sample data) that Berkshire Hathaway, and therefore Mr. Buffet, indeed outperformed the S&amp;P 500, and therefore Mr. Market, on average, and this outperofrmance is also statistically significant as we have just proven.
+This might very well be because Mr. Buffet does not follow every trend in the market, and rather trusts his own valuations. This became extremely apparent during the dotcom bubble, where Buffet stayed away from Tech Companies even though nearly every other Big Investor or Money Manager jumped on this growth stocks.
+While Buffet was ridiculed at first, on the long run it turned out that he indeed outperformed most of his peers in that period, after the bubble burst.</p>
+</div>
+
+                        </div>
+                    </section>
+            <!-- Disqus Inject -->
+                
+            </div>
+            
+        <!-- Footer -->
+            
+                <!-- Footer -->
+    <footer id="footer">
+        <div class="inner">
+            <ul class="icons">
+                
+                    <li><a href="https://www.instagram.com/d_oezdemir/" class="icon alt fa-instagram" target="_blank"><span class="label">Instagram</span></a></li>
+                
+                    <li><a href="https://github.com/DenizOezdemir" class="icon alt fa-github" target="_blank"><span class="label">GitHub</span></a></li>
+                
+                    <li><a href="https://www.linkedin.com/in/deniz-%C3%B6zdemir-784335b7/" class="icon alt fa-linkedin" target="_blank"><span class="label">LinkedIn</span></a></li>
+                
+            </ul>
+            <ul class="copyright">
+                <li>&copy; Deniz Oezdemir</li>
+                
+            </ul>
+        </div>
+    </footer>
+
+            
+        </div>
+
+    <!-- Scripts -->
+        <!-- Scripts -->
+    <!-- jQuery -->
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/jquery.scrolly.min.js"></script>
+    <script src="/js/jquery.scrollex.min.js"></script>
+    <script src="/js/skel.min.js"></script>
+    <script src="/js/util.js"></script>
+
+    
+
+    <!-- Main JS -->
+    <script src="/js/main.js"></script>
+
+    
+
+    
+
+    </body>
+</html>

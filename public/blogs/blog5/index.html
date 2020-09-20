@@ -54,10 +54,6 @@
             
                 <li><a href="/blogs">My Work</a></li>
             
-                <li><a href="/blogs/ipsum">Generic Blog</a></li>
-            
-                <li><a href="/elements.html">Elements</a></li>
-            
 
         </ul>
         <ul class="actions vertical">
@@ -86,10 +82,10 @@
 <link href="/rmarkdown-libs/lightable/lightable.css" rel="stylesheet" />
 
 
+<p>As we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!</p>
 <div id="data-cleansing-and-descriptive-statistics" class="section level1">
 <h1>Data Cleansing and Descriptive Statistics</h1>
-<p>As we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!
-But in order to download the financial data, we first have to consider the mapping of company names to stock symbols.</p>
+<p>But in order to download the financial data, we first have to consider the mapping of company names to stock symbols.</p>
 <pre class="r"><code>nyse &lt;- read_csv(here::here(&quot;data_efficient_frontier&quot;,&quot;nyse.csv&quot;))</code></pre>
 <p>Now that we have this data, let’s have a quick look at the number of companies per sector.</p>
 <pre class="r"><code>companies_by_sector &lt;- nyse %&gt;%
