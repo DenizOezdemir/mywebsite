@@ -106,20 +106,20 @@ disqusShortname = ""
     [[params.tiles.showcase]]
       title = "Gender Pay Gap"
       subtitle = "Examining Gender Equality at Work"
-      image = "pic03.jpg"
+      image = "pic09.jpg"
       url = "blogs/blog7"
 
     [[params.tiles.showcase]]
-      title = "Ipsum"
-      subtitle = "Nisl Sed Aliquam"
-      image = "pic04.jpg"
-      url = "blogs/ipsum"
+      title = "HR Analytics"
+      subtitle = "Glancing at the inner life of our employees."
+      image = "pic10.jpg"
+      url = "blogs/blog8"
 
-#    [[params.tiles.showcase]]
-#      title = "Consequat"
-#      subtitle = "Ipsum Dolor Sit Amet"
-#      image = "pic05.jpg"
-#      url = "blogs/ipsum"
+    [[params.tiles.showcase]]
+      title = "COVID-19 Simulation"
+      subtitle = "How to flatten the curve."
+      image = "pic08.jpg"
+      url = "/files/SIR_SIMULATION_DOCUMENTATION.pdf"
 
 #    [[params.tiles.showcase]]
 #      title = "Etiam"

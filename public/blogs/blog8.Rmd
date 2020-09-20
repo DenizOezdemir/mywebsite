@@ -1,0 +1,357 @@
+---
+title: "HR Analytics"
+date: '2020-09-14'
+description: Glancing at the inner life of our employees.
+draft: no
+image: pic13.jpg
+keywords: ''
+slug: blog8
+categories:
+- ''
+- ''
+---
+
+
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+
+```{r load-libraries, warning=FALSE, message=FALSE, echo=FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(fivethirtyeight)
+library(here)
+library(skimr)
+library(janitor)
+library(vroom)
+library(tidyquant)
+```
+
+# IBM HR Analytics
+
+
+We analyse a data set on Human Resoruce Analytics. The [IBM HR Analytics Employee Attrition & Performance data set](https://www.kaggle.com/pavansubhasht/ibm-hr-analytics-attrition-dataset) is a fictional data set created by IBM data scientists.  Among other things, the data set includes employees' income, their distance from work, their position in the company, their level of education, etc. A full description can be found on the website.
+
+First, let us load the data.
+
+```{r}
+
+hr_dataset <- read_csv(here::here("data_HR_analytics", "datasets_1067_1925_WA_Fn-UseC_-HR-Employee-Attrition.csv"))
+glimpse(hr_dataset)
+
+```
+
+We are going to clean the data set, as variable names are in capital letters, some variables are not really necessary, and some variables, e.g., `education` are given as a number rather than a more useful description.
+
+
+```{r}
+
+hr_cleaned <- hr_dataset %>% 
+  clean_names() %>% 
+  mutate(
+    education = case_when(
+      education == 1 ~ "Below College",
+      education == 2 ~ "College",
+      education == 3 ~ "Bachelor",
+      education == 4 ~ "Master",
+      education == 5 ~ "Doctor"
+    ),
+    environment_satisfaction = case_when(
+      environment_satisfaction == 1 ~ "Low",
+      environment_satisfaction == 2 ~ "Medium",
+      environment_satisfaction == 3 ~ "High",
+      environment_satisfaction == 4 ~ "Very High"
+    ),
+    job_satisfaction = case_when(
+      job_satisfaction == 1 ~ "Low",
+      job_satisfaction == 2 ~ "Medium",
+      job_satisfaction == 3 ~ "High",
+      job_satisfaction == 4 ~ "Very High"
+    ),
+    performance_rating = case_when(
+      performance_rating == 1 ~ "Low",
+      performance_rating == 2 ~ "Good",
+      performance_rating == 3 ~ "Excellent",
+      performance_rating == 4 ~ "Outstanding"
+    ),
+    work_life_balance = case_when(
+      work_life_balance == 1 ~ "Bad",
+      work_life_balance == 2 ~ "Good",
+      work_life_balance == 3 ~ "Better",
+      work_life_balance == 4 ~ "Best"
+    )
+  ) %>% 
+  select(age, attrition, daily_rate, department,
+         distance_from_home, education,
+         gender, job_role,environment_satisfaction,
+         job_satisfaction, marital_status,
+         monthly_income, num_companies_worked, percent_salary_hike,
+         performance_rating, total_working_years,
+         work_life_balance, years_at_company,
+         years_since_last_promotion)
+
+```
+
+## Analysis
+
+Let's start by getting familiar with the data:
+
+```{r hr_glimpse}
+
+glimpse(hr_cleaned)
+skim(hr_cleaned)
+
+```
+
+Using the `skim` output, we can see that we are dealing with a nice dataset with no missing values. 
+
+As we are in the shoes of IBM, talent retention is obviously a very relevant topic for us. Hence, let's see how often people leave the
+company:
+
+```{r attrition}
+
+ggplot(hr_cleaned, aes(x = attrition)) + 
+  geom_bar() +
+  labs(title = "The majority of employees stays at IBM.")
+
+```
+
+To give concrete numbers, around 84% of people stay at IBM:
+
+```{r attrition_2}
+
+hr_cleaned %>%
+  group_by(attrition) %>%
+  summarise(n = n()) %>%
+  mutate(proportion = n / sum(n)) %>% # calculate proportion of people who left vs stayed (i.e. by attrition)
+  select(attrition, proportion) # kill counting column (n)
+
+```
+
+However, it's not only about the mere number, but also about which kind of people leave. If only low performers stay with IBM and all high
+achievers are leaving, this would be pretty bad. Thus, lets have a look at `attrition` in combination with `performance_rating`:
+
+```{r attrition_performance}
+
+ggplot(hr_cleaned, aes(x = attrition, fill = performance_rating)) + 
+  geom_bar(position = "fill") + # show performance rating proportion by attrition (with bars both at 100%)
+  labs(fill = "performance rating",
+       y = "proportion",
+       title = "Attrition and performance rating are independent",
+       subtitle = "Performance rating proportion by attrition")
+
+```
+
+We can be relieved: the performance of people has no influence on attrition.
+
+Other important factors for a company are the distributions of `age`, `years_at_company`, `monthly_income` and `years_since_last_promotion`.
+Hence, let us have a quick look at some summary statistics and the distributions:
+
+```{r distributions_summary}
+
+hr_cleaned %>% 
+  select(age, years_at_company, monthly_income, years_since_last_promotion) %>% # kill useless columns
+  summarise_all(list(min, median, max, mean, sd)) %>% # compute summary statistics for each selected variable
+  pivot_longer(age_fn1:years_since_last_promotion_fn5, names_to = "names", values_to = "value") %>% # make columns to rows
+  separate(names, into = c("variable", "func"), sep = "_fn") %>% # split up "age_fn1" into "age" and "1"
+  mutate( # translate back the numbers, that summarise_all has assigned to the function names
+    func = case_when(
+      func == 1 ~ "min",
+      func == 2 ~ "median",
+      func == 3 ~ "max",
+      func == 4 ~ "mean",
+      func == 5 ~ "sd"
+    )
+  ) %>% 
+  arrange(variable) # order by variable name, to see all summary statistics for one variable one below the other
+  
+ggplot(hr_cleaned, aes(x = age)) + 
+  geom_density()+
+  labs(x = "age",
+       title = "Distribution of age")
+
+ggplot(hr_cleaned, aes(x = years_at_company)) + 
+  geom_density()+
+  labs(x = "years at company",
+       title = "Distribution of years at company")
+
+ggplot(hr_cleaned, aes(x = monthly_income)) + 
+  geom_density()+
+  labs(x = "monthly income",
+       title = "Distribution of monthly income")
+
+ggplot(hr_cleaned, aes(x = years_since_last_promotion)) + 
+  geom_density() +
+  labs(x = "years since last promotion",
+       title = "Distribution of years since last promotion")
+
+
+```
+
+One can easily see that only the distribution of age is roughly Normal. 
+
+We now want to analyse `job_satisfaction` and `work_life_balance`.
+First, let's have a look at the mere numbers:
+
+```{r job_sat_wlb}
+
+hr_cleaned %>%
+  group_by(job_satisfaction) %>%
+  summarise(n = n()) %>%
+  mutate(proportion = n / sum(n)) %>% # calculate proportion of people by job satisfaction level
+  arrange(desc(factor(job_satisfaction, levels = c("Low", "Medium", "High", "Very High")))) # reorder job satisfaction levels properly
+
+ggplot(hr_cleaned, aes(x = factor(job_satisfaction, levels = c("Low", "Medium", "High", "Very High")))) +
+  geom_bar(aes(y = stat(prop), group = 1)) + # do not show absolute counts but the proportion in percent (stat(prop))
+  scale_y_continuous(labels = scales::percent) + # show y values as percentages
+  labs(x = "job satisfaction",
+       title = "Proportion of people by job satisfaction")
+  
+hr_cleaned %>%
+  group_by(work_life_balance) %>%
+  summarise(n = n()) %>%
+  mutate(proportion = n / sum(n)) %>% # calculate proportion of people by work life balance level
+  arrange(desc(factor(work_life_balance, levels = c("Bad", "Good", "Better", "Best")))) # reorder work life balance levels properly
+
+ggplot(hr_cleaned, aes(x = factor(work_life_balance, levels = c("Bad", "Good", "Better", "Best")))) +
+  geom_bar(aes(y = stat(prop), group = 1)) + # do not show absolute counts but the proportion in percent (stat(prop))
+  scale_y_continuous(labels = scales::percent) + # show y values as percentages
+  labs(x = "work-life-balance",
+       title = "Proportion of people by work-life-balance")
+
+```
+
+We can see that most people (over 60%) are highly satisfied with their job. Furthermore, only around 5% of people have a bad work-life-balance.
+Is there any relationship between those two variables? Let's have a look:
+
+```{r job_sat_wlb_2}
+
+ggplot(hr_cleaned, aes(x = factor(job_satisfaction, levels = c("Low", "Medium", "High", "Very High")), # order job satisfactioon properly
+                       fill = factor(work_life_balance, levels = c("Best", "Better", "Good", "Bad")))) + # order w-l-b properly
+  geom_bar(position = "fill") +
+  labs(fill = "work life balance",
+       y = "proportion",
+       title = "Job Satisfaction and Work Life Balance are independent",
+       subtitle = "Work life balance proportion by job satisfaction",
+       x = "job satisfaction")
+```
+
+Hence, it seems like there is no apparent relationship between work-life-balance and job satisfaction!
+
+Other relationships of interest are between monthly income and education and also monthly income and gender.
+Let's see what we find out:
+
+```{r relationship_income_edu}
+
+ggplot(hr_cleaned, mapping = aes(x = monthly_income, y = stat(density))) + # show density, not counts (stat(density))
+  geom_freqpoly(mapping = aes(colour = education)) +
+  labs(x = "monthly income",
+       title = "monthly income distribution by education") +
+  facet_wrap(~factor(education, levels = c("Below College", "College", "Bachelor", "Master", "Doctor"))) + # order facets properly
+  theme_gdocs() # use a nice theme
+
+ggplot(hr_cleaned, aes(y = factor(education, levels = c("Below College", "College", "Bachelor", "Master", "Doctor")), 
+                       x = monthly_income)) +
+  geom_boxplot() +
+  labs(x = "monthly income",
+       y = "education",
+       title = "monthly income boxplots by education")
+
+```
+
+In the boxplot above, we can see that the median monthly income is higher with higher education, with the exemption of
+a lower median monthly income for a Bachelor education as opposed to College education.
+Let's complement this analysis with a look at average monthly income by education level:
+
+```{r avg_income_edu}
+
+avg_income_by_edu <- hr_cleaned %>% 
+  group_by(education) %>% 
+  summarise(mean = mean(monthly_income)) # compute average monthly income by education level
+
+ggplot(avg_income_by_edu, aes(x = factor(education, levels = c("Below College", "College", "Bachelor", "Master", "Doctor")), # order education levels properly
+                              y = mean)) +
+  geom_col() +
+  labs(x = "education level",
+       y = "average monthly income",
+       title = "Higher education means higher average income!")
+
+
+```
+
+There is definitely a tendency for higher education yielding higher average monthly incomes!
+
+```{r relationship_income_gender}
+
+ggplot(hr_cleaned, mapping = aes(x = monthly_income, y = stat(density))) + # show density, not counts (stat(density))
+  geom_freqpoly(mapping = aes(colour = gender)) +
+  labs(x = "monthly income",
+       title = "monthly income distribution by gender") +
+  facet_wrap(~gender)
+
+ggplot(hr_cleaned, aes(y = gender, 
+                       x = monthly_income)) +
+  geom_boxplot() +
+  labs(x = "monthly income",
+       y = "gender",
+       title = "monthly income boxplots by gender")
+
+```
+
+Despite many articles about the gender pay gap, it seems like women are better off than men at IBM!
+
+Another relationship of interest is that of job role vs. income. There are probably roles, that pay much better than others.
+
+```{r job_income}
+
+ggplot(hr_cleaned, aes(y = reorder(job_role, monthly_income), x = monthly_income)) + # order by monthly income
+  geom_boxplot() +
+  labs(x = "monthly income",
+       y = "job role",
+       title = "monthly income boxplots by job role")
+
+```
+
+Expectedly, managers get paid the most (on average). Sales representatives are least well paid. What happens when we also bring in age?
+
+```{r age_income_job_role}
+
+ggplot(hr_cleaned, aes(x = age, y = monthly_income)) +
+  geom_point(alpha = 0.4) + # set opacity of points
+  facet_wrap(~job_role) + # one scatterplot for each job role
+  labs(y = "monthly income",
+       title = "Small effect of age on monthly income given job role")
+
+
+```
+
+Even though the effect of age on monthly income is not too apparent when faceting on job role, we also have to take into account that
+one usually takes on other roles throughout a career. This is why overally there still is an effect of age on income:
+
+```{r age_income}
+
+ggplot(hr_cleaned, aes(x = age, y = monthly_income)) + 
+  geom_point(alpha = 0.4) + # set opacity of points
+  geom_smooth() +
+  labs(y = "monthly income",
+       title = "Tendency to have higher income with higher age")
+
+
+```
+
+This is actually something that seems to be intuitive for most people: staying with the same company for a long time means that you have gone through some tough times together, and therefore had some paycheck increases over the years!

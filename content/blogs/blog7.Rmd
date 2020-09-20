@@ -1,6 +1,6 @@
 ---
 title: "Gender Equality Analysis"
-date: '2017-10-31T22:42:51-05:00'
+date: '2020-09-14'
 description: Looking for the Gender Pay Gap at Omega Group Plc.
 draft: no
 image: pic12.jpg

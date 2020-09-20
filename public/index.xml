@@ -6,24 +6,15 @@
     <description>Recent content on Portfolio Website for Deniz Oezdemir</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 31 Oct 2017 22:42:51 -0500</lastBuildDate>
+    <lastBuildDate>Mon, 14 Sep 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>Aliquam</title>
-      <link>/blogs/aliquam/</link>
-      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
-      
-      <guid>/blogs/aliquam/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>Buffet against the Market</title>
       <link>/blogs/blog6/</link>
-      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
+      <pubDate>Mon, 14 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>/blogs/blog6/</guid>
       <description>IntroductionIt is often said that Warren Buffet counts among the top investors of all time. This is mainly due to his quite specific investment approach called “value investing”, where he doesn’t just follow the latest trends on the market which, as we all know, can be quite volatile from time to time. No, he rather focuses on the valuation he would give a company, looks at their stock prices, and sees if he can pick a bargain.</description>
@@ -32,7 +23,7 @@
     <item>
       <title>Efficient Frontier</title>
       <link>/blogs/blog5/</link>
-      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
+      <pubDate>Mon, 14 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>/blogs/blog5/</guid>
       <description>As we have to pay rather high tuition fees, our idea is to make some money with stocks. We want to download some data for interesting companies that are listed at the NYSE and examine risks and returns!
@@ -43,10 +34,29 @@ nyse &amp;lt;- read_csv(here::here(&amp;quot;data_efficient_frontier&amp;quot;,&
     <item>
       <title>Gender Equality Analysis</title>
       <link>/blogs/blog7/</link>
-      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
+      <pubDate>Mon, 14 Sep 2020 00:00:00 +0000</pubDate>
       
       <guid>/blogs/blog7/</guid>
       <description>Omega Group plc- Pay DiscriminationAt the last board meeting of Omega Group Plc., the headquarters of a large multinational company, the issue was raised that women were being discriminated in the company, in the sense that the salaries were not the same for male and female executives. A quick analysis of a sample of 50 employees (of which 24 men and 26 women) revealed that the average salary for men was about 8,700 higher than for women.</description>
+    </item>
+    
+    <item>
+      <title>HR Analytics</title>
+      <link>/blogs/blog8/</link>
+      <pubDate>Mon, 14 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/blogs/blog8/</guid>
+      <description>IBM HR AnalyticsWe analyse a data set on Human Resoruce Analytics. The IBM HR Analytics Employee Attrition &amp;amp; Performance data set is a fictional data set created by IBM data scientists. Among other things, the data set includes employees’ income, their distance from work, their position in the company, their level of education, etc. A full description can be found on the website.
+First, let us load the data.</description>
+    </item>
+    
+    <item>
+      <title>Aliquam</title>
+      <link>/blogs/aliquam/</link>
+      <pubDate>Tue, 31 Oct 2017 22:42:51 -0500</pubDate>
+      
+      <guid>/blogs/aliquam/</guid>
+      <description></description>
     </item>
     
     <item>
