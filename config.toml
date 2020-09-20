@@ -136,16 +136,19 @@ disqusShortname = ""
     # To add more blogs just copy and paste the code.
 
   # Section Type Two
-#  [params.two]
-#    enable = true
-#    title = "Massa libero"
-#    subtitle = """Nullam et orci eu lorem consequat tincidunt vivamus et sagittis libero. 
-#    Mauris aliquet magna magna sed nunc rhoncus pharetra. 
-#    Pellentesque condimentum sem. In efficitur ligula tate urna. Maecenas laoreet massa vel lacinia pellentesque lorem ipsum dolor. 
-#    Nullam et orci eu lorem consequat tincidunt. Vivamus et sagittis libero.
-#    Mauris aliquet magna magna sed nunc rhoncus amet pharetra et feugiat TEST1."""
-#    buttonText = "Get Started"
-#    url = "blogs"
+  [params.two]
+    enable = true
+    title = "Who is Deniz Oezdemir?"
+    subtitle = """A Short Introduction 
+    Growing up in Austria, I underwent education in software engineering and electronics. 
+    After working for a year, I decided to change gears and follow my second pashion: economics.
+    That's why I ended up studying economics at Sciences Po Paris and Bocconi in Milan.
+    To broaden my horizon even further, I then went for 
+    a degree in Management and Analytics at the London Business School.
+    On a personal level, I enjoy sports and meditation, and take all my pride from being 
+    the father of the most amazing daughter I could ever wish for."""
+    buttonText = "Get Started"
+    url = "blogs"
 
 
   # Contact section
