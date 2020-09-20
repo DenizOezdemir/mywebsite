@@ -1,5 +1,5 @@
 ---
-title: "Efficient Frontier"
+title: "Buffet against the Market"
 date: '2017-10-31T22:42:51-05:00'
 description: Tracking Berkshire Hathaway's performance against the S&P 500.
 draft: no
